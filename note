@@ -1,0 +1,400 @@
+打印addr对应地址内存，a是打印格式
+(gdb) x/[len]a [addr]
+(gdb) x/[N]c [addr]  打印 N 个字符
+(gdb) x/1s [addr]  打印字符串
+以二进制打印addr1~addr2的内存
+(gdb) dump binary memory result.bin [addr1] [addr2]
+
+
+epc日志等级
+onestor epc log set level debug
+
+
+集群状态检查
+onestor mon osd show diskpool all #查询硬盘池信息
+onestor mon osd show pool all #查询存储池信息
+storware mon engine cli engine dump #查询引擎状态
+onestor mon get mon_status #查询mon状态
+ps -ef | grep dpe
+
+干epc进程
+ps -ef| grep epc | awk {'print $2'}| xargs kill -9
+umount -l /mnt/j
+mount |grep epc
+ps -ef| grep epc
+
+
+
+
+nm -D /opt/h3c/bin/mon |grep malloc
+                 U malloc_tag
+鉴定是asan包还是非asan包的方法
+上面这个就是非asan包的
+
+文件问题初步排查
+https://idoc.h3c.com/docs/2wAlXKpLEDCnNoAP
+
+
+onestor dpe show memory-pool stat all
+
+模拟RDMA
+rdma link add rex0 type rxe netdev ethA3d-0
+ rping  -s -a 192.168.182.166 -v -C 10
+rping  -c -a 192.168.182.166 -v -C 10
+
+
+ echo 3 > /proc/sys/vm/drop_caches
+拿epc堆栈
+ps -Tp 36850 |grep udc_io |awk '{print $2}' |xargs -d '\n' -I % sh -c 'pstack %'
+
+ ps -Tp 367651 |grep udc_io |awk '{print $2}' |xargs -d '\n' -I % sh -c 'pstack %'
+
+重启配置流
+supervisorctl restart ud-leader
+
+查看epc帮助信息
+ onestor epc help cmds
+onestor dpe help hrpc
+
+systemctl status  spdk_huge大页进程
+
+安装部署失败，看/var/log/shell_util/package.log
+
+
+ grep -o "tid([0-9]\+)" /var/log/storage/epc/epc.log  |awk -F'[()]' '{print $2}' | sort | uniq -u
+
+epc_conf_opt.conf——这个是epc的基本配置参数，包括连接数、绑核参数等；
+epc_conf_debug.conf——这个是配置免拷贝内存等级划分的，这个业务一般感知不到；
+epc.service——这个是控制epc服务启动的，在这里面指定了启动epc服务需要执行load_epc_module.sh脚本；
+load_epc_module.sh——加载内核ko的脚本。
+
+epc内核开启debug日志
+
+
+echo -n 'module epc +pflmt' > /sys/kernel/debug/dynamic_debug/control
+echo -n 'module epc -pflmt' > /sys/kernel/debug/dynamic_debug/control
+单独开几行日志
+echo 'file epc_file.c line 1910 +pflmt' > /sys/kernel/debug/dynamic_debug/control
+echo 'file epc_file.c line 1864 +pflmt' > /sys/kernel/debug/dynamic_debug/control
+echo 'file epc_file.c line 3423 +pflmt' > /sys/kernel/debug/dynamic_debug/control
+dmesg -C ; dmesg -Tw > kernel.log
+
+挂载nfs
+mount -t nfs -o vers=3,  10.121.29.193:/nfs_jbz /jbz
+
+
+[root@zqy-client-187 epc]#  grep -o "tid([0-9]\+)" /var/log/storage/epc/epc.log  |awk -F'[()]' '{print $2}' | sort | uniq -u
+257527
+267636
+373562
+451983
+
+
+
+过滤hos超时op
+zgrep  -E "cost [1-9][0-9]{3,}" hos.client.epc.log-20241012-223*
+grep -E "cost [1-9][0-9]{3,}"  /var/log/storage/hos/
+
+
+
+epc 开启crc校验方法：
+修改配置文件/opt/h3c/etc/conf/default/develop.conf
+[epc_common_crc_split_size, UINT32, 0~4294967295, WRITE-SYNC, 8192][图片]epc内核态生效：
+rmmod epc
+insmod /opt/h3c/bin/epc.ko
+epc用户态生效：
+重启epc
+
+
+
+打印addr对应地址内存，a是打印格式
+(gdb) x/[len]a [addr]
+(gdb) x/[N]c [addr]  打印 N 个字符
+(gdb) x/1s [addr]  打印字符串
+以二进制打印addr1~addr2的内存
+(gdb) dump binary memory result.bin [addr1] [addr2]
+
+查看nfs导出目录是否存在
+[root@Neimeng-153-node4 uds]# onestor uds  nfs  show_export export_id 3
+Export not found.
+[root@Neimeng-153-node4 uds]# onestor uds  nfs  show_export export_id 4
+export_id:4
+配置文件
+cat /opt/h3c/etc/uds/export.conf
+失败的导出目录
+grep "\/test2\/dir2" nfs.log
+2024-10-16 20:47:53.595832 30b0 7f061cd40640 ERROR [EXPORT][init_export_root:2052][0] Lookup failed on path, ExportId=3Path=/test2/dir2 FSAL_ERROR=(File busy, retry,110)
+
+
+看zmem的占用
+onestor epc show memory-pool stat all
+
+这个是看普通内存的占用
+onestor epc show memory
+
+top -o RES 
+res这一栏是占用的实际物理内存
+zmem的show_hugepages.sh
+看下main-thread有几个1G的，再加上10G，就是zmem公共消耗了多少G的物理内存
+res - zmem多少G，就是普通内存实际占用的物理内存大小
+
+
+ mon查看engine历史状态   关键字 enginemon_log_engine_dump epoch:
+ 
+
+
+当前部署加了至少三节点部署，需要两节点部署按以下方式操作：
+1.安装大包
+2.vim /opt/h3c/etc/storware.conf
+
+# 单集群的最小节点数量
+min_node_num_per_cluster = 3
+# 单节点池的最小节点数量
+min_node_num_per_node_pool = 3
+
+这两个值都改成2
+3.supervisorctl restart cm-leader，然后登陆handy开始部署即可（注意：需要先重启进程再登录handy）
+
+onestor resctl  show  config
+
+
+nfs长时间掉零，排查客户端和服务端连通性
+开日志
+rpcdebug -m nfs -s all
+rpcdebug -m rpc -s all
+
+dmesg -C;dmesg -Tw
+关日志
+rpcdebug -m rpc -c all
+rpcdebug -m nfs -c all
+
+telent 服务端ip 2049 
+telnet 182.203.11.233 2049
+ping  vip
+
+uds服务 ,gdb忽略SIGPIPE信号
+handle SIGPIPE nostop
+
+
+
+下一代升级问题
+
+状态文件：  记录当前升级状态及失败原因
+                /opt/upd/updconf/step_state.conf
+配置文件：   记录升级中的配置信息，包括节点角色、地址、安装包信息等
+                /opt/upd/updconf/layer.conf
+终端日志：   记录升级流程的日志
+                /var/log/upgrade/console_print.log
+shell相关日志：  记录shell脚本日志
+                /var/log/upgrade/upgrade_sh.log
+python相关日志： 服务端收到请求的执行日志都在UPDS，客户端发送的请求的日志都在UPDC
+                /var/log/storage/UPDC/UPDC.log      客户端日志
+                /var/log/storage/UPDS/UPDS.log       服务段日志
+                
+问题分析定位方法：
+                1、查看终端日志console_print.log，确定问题出现得时间
+                2、查看状态文件step_state.conf，明确问题节点、出现问题所处得状态以及可能得原因
+                3、查看主handy节点得UPDC日志，进一步缩小问题时间点
+                4、查看问题节点的UPDS日志，分析具体原因
+
+全组件开日志
+onestor self_node set log level debug
+
+storware mode dev enable
+
+storware-dev self_node set log level debug
+查看engine启动状态
+storware  dpe eng_ctrl engine_detail_status
+
+
+
+onestor resctl show  quota
+
+onestor dpe  mds  dump_cache_info
+onestor epc  udc  dump_cache_info
+可以查看结构体字节
+ readelf -wi /opt/h3c/lib/libudc.so  |less
+ 
+ 查询trim sleep时间
+ onestor epc show conf module develop  key udc_trim_ult_sleep_utime
+ 设置trim sleep时间50ms
+ onestor epc set conf module develop  key udc_trim_ult_sleep_utime value  50000
+ 
+ 查询udc配置文件
+onestor epc udc config_show
+
+
+内蒙古环境inode
+10.141.226.50
+
+
+
+查询数据库
+/opt/h3c/bin/python3 /opt/h3c/lib/python3.9/site-packages/cm_base/db/util/test_db_status.py test_query_table ud_namespace_cfg
+
+
+cas
+[root@cvknode-10 home]# virsh  list
+ Id   Name                    State
+---------------------------------------
+ 3    node193-cxl             running
+ 4    client2-zhangjianhang   running
+ 5    node176-zhangjianhang   running
+ 6    client1_0               running
+ 9    node128                 running
+ 10   node194-cxl             running
+ 11   node195                 running
+ 12   client-183              running
+ 15   node177                 running
+ 16   node178                 running
+ 20   node182                 running
+ 21   node180                 running
+ 22   node179                 running
+
+[root@cvknode-10 home]#
+[root@cvknode-10 home]# virsh  reboot  node177
+Domain node177 is being rebooted
+
+[root@cvknode-10 home]# virsh shutdown node177
+Domain node177 is being shutdown
+
+[root@cvknode-10 home]#
+[root@cvknode-10 home]#
+[root@cvknode-10 home]#
+[root@cvknode-10 home]# virsh start  node177
+error: Domain is already active
+
+[root@cvknode-10 home]# virsh list --all
+ Id   Name                    State
+----------------------------------------
+ 3    node193-cxl             running
+ 4    client2-zhangjianhang   running
+ 5    node176-zhangjianhang   running
+ 6    client1_0               running
+ 9    node128                 running
+ 10   node194-cxl             running
+ 11   node195                 running
+ 12   client-183              running
+ 15   node177                 running
+ 16   node178                 running
+ 20   node182                 running
+ 21   node180                 running
+ 22   node179                 running
+ -    client1                 shut off
+ -    client2                 shut off
+ -    node181                 shut off
+ -    vm-x-10.121.29.235      shut off
+ -    vm-x-10.121.29.238      shut off
+
+
+root@client14:~# nm /opt/h3c/bin/epc.ko  |grep epc_proc_resend_failed_async
+00000000000085e0 T epc_proc_resend_failed_async
+000000000000868e t epc_proc_resend_failed_async.cold
+
+root@client14:~# addr2line -e /opt/h3c/bin/epc.ko  -a 0x865c -f -C
+0x000000000000865c
+epc_proc_resend_failed_async
+/jenkins/gitdir/V700R001B01_05201742_0767/debug/product_epc/ud-protocol/epc/epc_kernel/epc_client.c:856
+
+
+root@client14:~# nm /opt/h3c/bin/epc.ko  |grep epc_wait_async_write_with_retry
+00000000000097b0 T epc_wait_async_write_with_retry
+000000000000932e t epc_wait_async_write_with_retry.cold
+
+
+
+添加配置项，重启epc生效
+[epc_user_err_num, INT32,-255~0, WRITE-REBOOT, -220]
+        [set] [conf]:
+                        [set conf module xxx key xxx value xxx 设置]
+        [show] [conf]:
+                        [show conf [module xxx [key xxx]] 显示]
+
+
+dd if=/dev/zero of=/mnt/jbz/test bs=1M count=1 seek=2
+
+dd if=/mnt/jbz/test bs=1048576 count=1
+
+
+storware epc set log  level debug
+ 
+ strace跟踪所有子进程
+ strace -f -e trace=file,desc -s 512 -o 0718nfs_milvus_strace.log -p 317631
+ 
+ # nfs主线允许实ip挂载：
+storware uds nfs_inject inflight_op switch off
+# nfs B01实ip挂载方式
+1、stop uds
+2、gdb 
+3、b nfs_init
+4、r
+5、(gdb) set variable inflight_op_switch=0
+(gdb) p inflight_op_switch
+$1 = false
+
+
+创池前执行的：
+ 关CRC:
+sudo echo "pool_crc_level=1" | sudo tee -a /opt/h3c/etc/conf/onestor_basic/basic.conf    
+sudo systemctl restart  mon
+sudo systemctl restart  dpe
+
+slub
+可以执行这个命令添加  grubby --update-kernel=ALL --args="slub_debug=FZPU"   重启生效
+
+五、同版本升级
+1.主备节点/etc/storware/storware.conf下same_ver_upgrade = no的配置项改为 same_ver_upgrade = yes，然后重启下服务supervisorctl  restart  all
+
+2.然后在重启apache2服务：  service  apache2  restart即可
+
+直接用coredumpctl gdb加pid就可以打开corefile
+
+集群销毁
+sudo storware-cli probe
+sudo storware-cli destroy --y
+强制销毁
+storware-cli destroy -iqn --y
+
+单节点销毁
+storware-cli destroy --host 10.121.29.191 --y
+
+打印协程信息
+(gdb) p *(ABTI_xstream *) lp_ABTI_local
+
+
+测试用例
+touch  test_file
+exec 3<> test_file
+echo  -n "hello fd" >&3
+unlink  test_file
+cat /proc/$$/fd/3
+exec 3>&-
+ 
+ for i in {1..500};do ./fcntl_stresser_v2 /mnt/jbz/dir/file$i 16 1 1200 &done
+ 
+zgrep -aE "Timestamp|nfs_proc_process" /var/log/storage/perf/perf_inc_output_uds.log |less
+zgrep -aE "engine_opproc_handler|Timestamp" /var/log/storage/perf/perf_inc_output_dpe.log |less
+
+
+
+mds开日志
+storware mon fs dump先找到mds对应的元数据池id  然后for i in {0..100};do sudo storware dpe eng_ctrl loglevel engine 4.$i module MDS level 6;done
+
+用这个指令可以打印所有线程栈：
+ps -eT -o pid,tid --no-headers | xargs -n2 sh -c 'echo "PID: $0  TID: $1"; cat /proc/$0/task/$1/stack 2>/dev/null; echo "----------------------"' 
+
+
+sudo storware epc set hos_fault name engine_error switch on inject_err -110//不取消的话就会再hos的超时时间内重试[图片]
+
+gdb里p ((ABTI_xstream*)lp_ABTI_local)->hang_info
+
+数据不一致
+hexdump  -C -n 1024 -s 0x00000800  /mnt/fpnfs01/a01/AI_7k01/vdb.1_1.dir/vdb_f0222.file 
+/opt/h3c/script/udclient/iolkup.py
+ 
+日志限频
+echo  log_rate_limit=50 > /proc/fs/epc/log_rate_limit
+
+
+
+https://rdmirrors.h3c.com/.help/ubuntu.html
