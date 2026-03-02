@@ -398,3 +398,14 @@ echo  log_rate_limit=50 > /proc/fs/epc/log_rate_limit
 
 
 https://rdmirrors.h3c.com/.help/ubuntu.html
+
+powershell 
+写入字符
+Add-Content  -Path .\file1 -Value 123
+
+读取文件
+Get-Content .\file1
+
+
+mds修改配置
+storware mode dev enable && storware-dev dpe set conf module develop key mds_mix_rd_cache_switch value true
