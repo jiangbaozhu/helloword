@@ -1,6 +1,6 @@
 # postman闪拼对象操作
 __请求url：__  
->https://endpoint:8082/{bucketname}/{dst_objname}?fastcompose
+>https://endpoint:8082/{bucketname}/{dst_objname}?fastcompose  
 >http://55.108.84.192:8082/lxbu1/file3?fastcompose  
 
 请求body:
