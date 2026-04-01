@@ -409,3 +409,17 @@ Get-Content .\file1
 
 mds修改配置
 storware mode dev enable && storware-dev dpe set conf module develop key mds_mix_rd_cache_switch value true
+
+udc查看桩点
+storware uds show fault_inject |grep TP_UDC_FC
+storware uds set fault_inject index 5660 switch off
+
+--- 定时刷新/查看缓存信息
+watch -d -n 1 "storware uds udc fc_mem_dump"
+udc设置淘汰水位
+storware-dev uds set conf module develop key udc_fc_free_watermark_low value 90
+storware-dev uds set conf module develop key udc_fc_free_watermark_min value 90
+
+HDFS测试
+[root@E6-64-node98 hdfs]# hdfs dfs -put aaa.txt hdfs://55.108.84.200:9000/^C
+[root@E6-64-node98 hdfs]# vim etc/hadoop/core-site.xml
